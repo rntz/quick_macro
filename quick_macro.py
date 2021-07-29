@@ -1,9 +1,8 @@
-from talon import Context, Module, actions, noise, ui, speech_system
+from talon import Module, actions, noise, ui, speech_system
 from typing import Any, Optional
 import logging
 
 mod = Module()
-ctx = Context()
 
 setting_quick_macro_duration = mod.setting(
     "quick_macro_duration",
