@@ -1,5 +1,5 @@
 from talon import Context, Module, actions, noise, ui, speech_system
-from typing import Callable, Union, Any, Optional, List
+from typing import Any, Optional
 import logging
 
 mod = Module()
@@ -80,9 +80,3 @@ def on_phrase(j):
     if quick_macro_expires is not None and quick_macro_elapsed >= quick_macro_expires:
         actions.user.quick_macro_clear()
 speech_system.register("phrase", on_phrase)
-
-@ctx.action_class("user")
-class NoiseActions:
-    def pop():
-        logging.info("running pop action")
-        actions.user.quick_macro_run()
