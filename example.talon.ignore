@@ -1,0 +1,18 @@
+# This file gives examples of using the quick macro actions. Note that some of
+# the commands in this file may conflict with ones from knausj, so you may need
+# to rename them either here or in your copy of knausj.
+
+# For example, using the following commands, you'll be able to say "scroll down"
+# once, and then scroll further by popping.
+scroll up:
+  edit.page_up()
+  user.quick_macro_set("edit.page_up")
+scroll down:
+  edit.page_down()
+  user.quick_macro_set("edit.page_down")
+
+# Or, you can bind a command to initiate a search, and bind the quick macro to
+# finding the next occurrence.
+search:
+  edit.find()
+  user.quick_macro_set("edit.find_next")
