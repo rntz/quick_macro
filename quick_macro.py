@@ -35,7 +35,7 @@ class Actions:
 
     def quick_macro_expiring(expires: Optional[int], action: str, arg: Any = None):
         """Sets a quick macro which expires after a certain number of phrases"""
-        global quick_macro, quick_macro_expires
+        global quick_macro, quick_macro_expires, quick_macro_elapsed
         if expires is None: expires = setting_quick_macro_duration.get()
         if expires <= 0: expires = None # ie. never
         quick_macro = (action, arg) if arg is not None else (action,)
@@ -75,7 +75,12 @@ ui.register("win_focus", lambda win: actions.user.quick_macro_clear())
 
 def on_phrase(j):
     global quick_macro_elapsed
+    # skip things that didn't get recognized
+    if 'text' not in j: return
+    if quick_macro_expires is not None:
+        logging.info(f"== ELAPSED {quick_macro_elapsed}, EXPIRES {quick_macro_expires} ==")
     quick_macro_elapsed += 1
     if quick_macro_expires is not None and quick_macro_elapsed >= quick_macro_expires:
+        logging.info(f"== QUICK MACRO EXPIRED, {quick_macro_expires} ==")
         actions.user.quick_macro_clear()
 speech_system.register("phrase", on_phrase)
