@@ -1,6 +1,7 @@
 from talon import Module, actions, noise, ui, speech_system
 from typing import Any, Optional
 import logging
+from dataclasses import dataclass
 
 mod = Module()
 
@@ -11,37 +12,45 @@ setting_quick_macro_duration = mod.setting(
     desc="The default number of phrases after which a quick macro expires. -1 means never."
 )
 
-# quick_macro may be None or a tuple (action, args...).
-# None: no quick macro assigned.
-# (action, args...)
-#   `action` is the path to an action.
-#   `args` are the arguments to the action.
-quick_macro = None
+@dataclass
+class QuickMacro:
+    # the path to an action, eg. "user.paste"
+    action: str
+    # the arguments to pass, eg. ["hello world"]
+    args: list
+    # how many phrases before the macro expires. None means never.
+    duration: Optional[int]
+    # number of phrases since the macro was last set or invoked
+    elapsed: int
+    # whether to preserve the quick macro across window focus switches
+    sticky: bool
 
-# how many phrases before the macro expires
-quick_macro_expires = None
-
-# number of phrases since the macro was last set or invoked
-quick_macro_elapsed = 0
+quick_macro: Optional[QuickMacro] = None
 
 @mod.action_class
 class Actions:
     def quick_macro_clear():
         """Clears the quick macro"""
-        global quick_macro, quick_macro_expires
-        logging.info("== Quick macro cleared ==")
+        global quick_macro
+        # logging.info("Quick macro cleared")
         quick_macro = None
-        quick_macro_expires = None
 
-    def quick_macro_expiring(expires: Optional[int], action: str, arg: Any = None):
+    def quick_macro_expiring(duration: Optional[int], action: str, arg: Any = None, sticky: bool = False):
         """Sets a quick macro which expires after a certain number of phrases"""
-        global quick_macro, quick_macro_expires, quick_macro_elapsed
-        if expires is None: expires = setting_quick_macro_duration.get()
-        if expires <= 0: expires = None # ie. never
-        quick_macro = (action, arg) if arg is not None else (action,)
-        quick_macro_expires = expires
-        quick_macro_elapsed = 0
-        logging.info(f"== Quick macro set to {quick_macro!r}, duration {quick_macro_expires!r} ==")
+        global quick_macro
+        if duration is None: duration = setting_quick_macro_duration.get()
+        if duration < 0: duration = None # ie. never
+        if duration == 0:
+            logging.info("Quick macro with duration 0 expired immediately")
+            return # okay, boss
+        args = [arg] if arg is not None else []
+        quick_macro = QuickMacro(
+            action=action,
+            args=args,
+            duration=duration,
+            elapsed=0,
+            sticky=sticky)
+        # logging.info(f"Quick macro set to {quick_macro!r}")
 
     def quick_macro_set(action: str, arg: Any = None):
         """Sets a quick macro"""
@@ -51,36 +60,50 @@ class Actions:
         """Sets a quick macro that expires after a single phrase"""
         actions.user.quick_macro_expiring(1, action, arg)
 
+    def quick_macro_sticky(action: str, arg: Any = None):
+        """Sets a quick macro that persists across focus changes"""
+        actions.user.quick_macro_expiring(None, action, arg, sticky=True)
+
+    def quick_macro_sticky_transient(action: str, arg: Any = None):
+        """Sets a quick macro that persists across focus changes but expires after a single phrase"""
+        actions.user.quick_macro_expiring(1, action, arg, sticky=True)
+
     def quick_macro_run():
         """Runs the quick macro"""
-        if not isinstance(quick_macro, tuple):
-            if quick_macro is None:
-                logging.info("== Quick macro invoked, but no quick macro assigned ==")
-            else:
-                logging.warn(f"== Unknown quick macro invoked: {quick_macro!r} ==")
+        global quick_macro
+        macro = quick_macro
+        if macro is None:
+            logging.info("Quick macro invoked, but no quick macro assigned")
             return
-        logging.info(f"== Quick macro invoked: {quick_macro!r} ==")
-        action, *args = quick_macro
+        # logging.info(f"Quick macro invoked: {macro!r}")
+        assert isinstance(macro, QuickMacro)
         func = actions
-        for pathelt in action.split('.'):
+        for pathelt in macro.action.split('.'):
             func = getattr(func, pathelt)
-        func(*args)
-        # we do this after invoking the action in case it causes the elapsed
-        # counter to increase somehow
-        global quick_macro_elapsed
-        quick_macro_elapsed = 0
+        func(*macro.args)
+        # In case invoking the quick macro set it to something else, we restore
+        # it. This can happen eg. with regular macros. We also reset elapsed to
+        # 0 to keep the quick macro active.
+        # if macro != quick_macro:
+        #     logging.info(f"Restored quick macro to {macro!r}, was {quick_macro!r}")
+        quick_macro = macro
+        macro.elapsed = 0
 
-ui.register("app_deactivate", lambda app: actions.user.quick_macro_clear())
-ui.register("win_focus", lambda win: actions.user.quick_macro_clear())
+def on_focus_change():
+    if not quick_macro or quick_macro.sticky: return
+    # logging.info(f"Quick macro cleared by focus change, was {quick_macro!r}")
+    actions.user.quick_macro_clear()
+
+ui.register("app_deactivate", lambda app: on_focus_change())
+ui.register("win_focus", lambda win: on_focus_change())
 
 def on_phrase(j):
-    global quick_macro_elapsed
+    global quick_macro
     # skip things that didn't get recognized
-    if 'text' not in j: return
-    if quick_macro_expires is not None:
-        logging.info(f"== ELAPSED {quick_macro_elapsed}, EXPIRES {quick_macro_expires} ==")
-    quick_macro_elapsed += 1
-    if quick_macro_expires is not None and quick_macro_elapsed >= quick_macro_expires:
-        logging.info(f"== QUICK MACRO EXPIRED, {quick_macro_expires} ==")
+    if quick_macro is None or 'text' not in j: return
+    quick_macro.elapsed += 1
+    if quick_macro.duration is not None and quick_macro.elapsed >= quick_macro.duration:
+        # logging.info(f"Quick macro expired, duration {quick_macro.duration}")
         actions.user.quick_macro_clear()
+
 speech_system.register("phrase", on_phrase)
