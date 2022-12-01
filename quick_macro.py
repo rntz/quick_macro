@@ -29,6 +29,11 @@ quick_macro: Optional[QuickMacro] = None
 
 @mod.action_class
 class Actions:
+    def quick_action(action: str, arg: Any = None):
+        """Performs an action and makes it the quick macro."""
+        actions.user.quick_macro_set(action, arg)
+        actions.user.quick_macro_run()
+
     def quick_key(key: str):
         """Presses a key and makes it the quick macro."""
         actions.key(key)
@@ -38,6 +43,11 @@ class Actions:
         """Presses a key and makes it a transient quick macro."""
         actions.key(key)
         actions.user.quick_macro_transient("key", key)
+
+    def quick_key_sticky_transient(key: str):
+        """Presses a key and makes it a sticky transient quick macro."""
+        actions.key(key)
+        actions.user.quick_macro_sticky_transient("key", key)
 
     def quick_macro_clear():
         """Clears the quick macro"""
