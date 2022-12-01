@@ -62,6 +62,10 @@ class Actions:
             sticky=sticky)
         # logging.info(f"Quick macro set to {quick_macro!r}")
 
+    def quick_macro_active() -> bool:
+        """Returns true if a quick macro is currently active."""
+        return quick_macro is not None
+
     def quick_macro_set(action: str, arg: Any = None):
         """Sets a quick macro"""
         actions.user.quick_macro_expiring(None, action, arg)

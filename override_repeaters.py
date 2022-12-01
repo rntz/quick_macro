@@ -7,5 +7,10 @@ ctx = Context()
 @ctx.action_class("core")
 class override_repeaters:
     def repeat_command(times = 1):
+        # Clear the quick macro, then run the command. If it sets a quick macro
+        # we preserve it, otherwise we make a transient quick macro that repeats
+        # the command.
+        actions.user.quick_macro_clear()
         actions.next(times)
-        actions.user.quick_macro_transient("core.repeat_command")
+        if not actions.user.quick_macro_active():
+            actions.user.quick_macro_transient("core.repeat_command")
