@@ -4,12 +4,8 @@
 
 # For example, using the following commands, you'll be able to say "scroll down"
 # once, and then scroll further by popping.
-scroll up:
-  edit.page_up()
-  user.quick_macro_set("edit.page_up")
-scroll down:
-  edit.page_down()
-  user.quick_macro_set("edit.page_down")
+scroll up: user.quick_action("edit.page_up")
+scroll down: user.quick_action("edit.page_down")
 
 # Or, you can bind a command to initiate a search, and bind the quick macro to
 # finding the next occurrence.

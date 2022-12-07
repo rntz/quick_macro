@@ -13,4 +13,4 @@ class override_repeaters:
         actions.user.quick_macro_clear()
         actions.next(times)
         if not actions.user.quick_macro_active():
-            actions.user.quick_macro_transient("core.repeat_command")
+            actions.user.quick_repeat()
